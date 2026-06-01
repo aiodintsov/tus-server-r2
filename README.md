@@ -1,6 +1,11 @@
 # tus-server-r2
 
+[![npm](https://img.shields.io/npm/v/tus-server-r2)](https://www.npmjs.com/package/tus-server-r2)
+[![license](https://img.shields.io/npm/l/tus-server-r2)](./LICENSE)
+
 [TUS resumable upload protocol](https://tus.io) server for Cloudflare Workers + R2. Zero dependencies, no KV, no Durable Objects — just your R2 bucket.
+
+**[Documentation & Setup Guide](https://aiodintsov.github.io/tus-server-r2/)** · **[Live Upload Example](https://aiodintsov.github.io/tus-server-r2/example.html)** · **[npm](https://www.npmjs.com/package/tus-server-r2)**
 
 ## Install
 
