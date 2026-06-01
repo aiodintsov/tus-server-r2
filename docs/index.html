@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tus-server-r2 — TUS server for Cloudflare Workers + R2</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-width: 240px;
+      --accent: #f6821f;
+      --text: #1a1a1a;
+      --muted: #666;
+      --border: #e5e5e5;
+      --bg-code: #f6f8fa;
+      --sidebar-bg: #1a1a2e;
+      --sidebar-text: #c9d1d9;
+      --sidebar-active: #f6821f;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text);
+      line-height: 1.7;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    nav {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      padding: 2rem 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .nav-logo {
+      padding: 0 1.5rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 1rem;
+    }
+
+    .nav-logo h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-logo .version {
+      font-size: 0.75rem;
+      color: var(--accent);
+      margin-top: 0.2rem;
+    }
+
+    nav ul { list-style: none; }
+
+    nav ul li a {
+      display: block;
+      padding: 0.35rem 1.5rem;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.15s;
+    }
+
+    nav ul li a:hover { color: #fff; }
+    nav ul li a.active { color: var(--sidebar-active); font-weight: 500; }
+
+    .nav-section {
+      padding: 1rem 1.5rem 0.25rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* Main */
+    main {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      max-width: 860px;
+      padding: 3rem 3rem 6rem;
+    }
+
+    /* Hero */
+    .hero {
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .hero-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    .badge-orange { background: #fff3e6; color: #c05c00; border: 1px solid #f6d0a8; }
+    .badge-blue   { background: #e8f0ff; color: #1a56db; border: 1px solid #b3c9f7; }
+    .badge-green  { background: #e6f7ec; color: #1a7a33; border: 1px solid #a8e0ba; }
+
+    .cta {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.6rem 1.25rem;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .cta:hover { background: #d9710e; }
+
+    /* Sections */
+    section { margin-bottom: 3rem; }
+
+    h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+      padding-top: 0.5rem;
+    }
+
+    h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 1.75rem 0 0.5rem;
+      color: var(--text);
+    }
+
+    h3 .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.6rem;
+      height: 1.6rem;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-right: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    p { margin-bottom: 0.75rem; color: var(--text); }
+
+    a { color: #0070f3; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Code */
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      margin: 0.75rem 0 1rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.875em;
+    }
+
+    p code, li code, td code {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1em 0.4em;
+    }
+
+    /* Callout */
+    .callout {
+      display: flex;
+      gap: 0.75rem;
+      background: #fff8f0;
+      border: 1px solid #f6d0a8;
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin: 0.75rem 0 1rem;
+      font-size: 0.875rem;
+      color: #5a3a00;
+    }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; margin: 0.75rem 0 1.25rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th {
+      background: var(--bg-code);
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+
+    td {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td { background: #fafafa; }
+
+    /* Extensions list */
+    .ext-list { list-style: none; }
+    .ext-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .ext-list li:last-child { border-bottom: none; }
+    .ext-tag {
+      font-family: monospace;
+      font-size: 0.8rem;
+      background: #e8f0ff;
+      color: #1a56db;
+      border: 1px solid #b3c9f7;
+      border-radius: 4px;
+      padding: 0.1em 0.5em;
+      white-space: nowrap;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 768px) {
+      nav { display: none; }
+      main { margin-left: 0; padding: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <h1>tus-server-r2</h1>
+    <div class="version">v1.0.0</div>
+  </div>
+  <ul>
+    <li class="nav-section">Overview</li>
+    <li><a href="#intro">Introduction</a></li>
+    <li><a href="#quickstart">Quickstart</a></li>
+    <li class="nav-section">Setup</li>
+    <li><a href="#step1">1. Cloudflare account</a></li>
+    <li><a href="#step2">2. Create R2 bucket</a></li>
+    <li><a href="#step3">3. Install Wrangler</a></li>
+    <li><a href="#step4">4. Login</a></li>
+    <li><a href="#step5">5. Create project</a></li>
+    <li><a href="#step6">6. Configure</a></li>
+    <li><a href="#step7">7. Write Worker</a></li>
+    <li><a href="#step8">8. Test locally</a></li>
+    <li><a href="#step9">9. Deploy</a></li>
+    <li><a href="#step10">10. Test live</a></li>
+    <li class="nav-section">Reference</li>
+    <li><a href="#options">Options</a></li>
+    <li><a href="#env-vars">Environment Variables</a></li>
+    <li><a href="#extensions">TUS Extensions</a></li>
+    <li><a href="#storage">Storage Layout</a></li>
+    <li><a href="#webhook">Webhook</a></li>
+    <li><a href="#errors">Error Codes</a></li>
+    <li class="nav-section">Examples</li>
+    <li><a href="#example-auth">With Auth</a></li>
+    <li><a href="#example-webhook">With Webhook</a></li>
+    <li><a href="#example-cron">Expired Upload Cleanup</a></li>
+    <li><a href="#example-uppy">Uppy Client</a></li>
+  </ul>
+</nav>
+
+<main>
+
+  <div class="hero" id="intro">
+    <h1>tus-server-r2</h1>
+    <p>TUS resumable upload protocol server for Cloudflare Workers + R2.<br>
+    Zero dependencies. No KV. No Durable Objects. Just your R2 bucket.</p>
+    <div class="hero-badges">
+      <a class="badge badge-orange" href="https://www.npmjs.com/package/tus-server-r2" target="_blank">npm v1.0.0</a>
+      <a class="badge badge-blue" href="https://github.com/aiodintsov/tus-server-r2" target="_blank">GitHub</a>
+      <a class="badge badge-green" href="./example.html">Live Example</a>
+    </div>
+    <a class="cta" href="./example.html">Try the upload example →</a>
+  </div>
+
+  <section id="quickstart">
+    <h2>Quickstart</h2>
+    <p>Three files, two commands:</p>
+    <p><strong>wrangler.toml</strong></p>
+    <pre><code class="language-toml">name = "my-uploader"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "my-uploads"</code></pre>
+
+    <p><strong>src/index.js</strong></p>
+    <pre><code class="language-js">import { createTusHandler } from 'tus-server-r2'
+
+export default createTusHandler()</code></pre>
+
+    <pre><code class="language-bash">npm install tus-server-r2
+npx wrangler deploy</code></pre>
+
+    <p>Your TUS endpoint is live at <code>https://my-uploader.&lt;account&gt;.workers.dev</code>.</p>
+  </section>
+
+  <section id="setup">
+    <h2>Setup Guide</h2>
+
+    <h3 id="step1"><span class="step-num">1</span> Cloudflare account</h3>
+    <p>Sign up at <a href="https://cloudflare.com" target="_blank">cloudflare.com</a>. Workers + R2 are available on the free tier. A credit card is required for R2 even within free limits.</p>
+
+    <h3 id="step2"><span class="step-num">2</span> Create an R2 bucket</h3>
+    <p>In the Cloudflare dashboard → <strong>R2 Object Storage</strong> → <strong>Create bucket</strong>. Name it something like <code>my-uploads</code>.</p>
+
+    <h3 id="step3"><span class="step-num">3</span> Install Wrangler</h3>
+    <pre><code class="language-bash">npm install -g wrangler</code></pre>
+    <div class="callout">On some systems (including devcontainers) you may need <code>sudo npm install -g wrangler</code>.</div>
+
+    <h3 id="step4"><span class="step-num">4</span> Login to Cloudflare</h3>
+    <pre><code class="language-bash">wrangler login</code></pre>
+    <p>This opens a browser to authorize Wrangler. In devcontainers where a browser isn't available, use an API token instead:</p>
+    <pre><code class="language-bash">export CLOUDFLARE_API_TOKEN=your-token-here</code></pre>
+    <p>Create a token at <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">dash.cloudflare.com/profile/api-tokens</a> using the <strong>Edit Cloudflare Workers</strong> template.</p>
+
+    <h3 id="step5"><span class="step-num">5</span> Create the Worker project</h3>
+    <pre><code class="language-bash">mkdir my-uploader
+cd my-uploader
+npm init -y
+npm install tus-server-r2</code></pre>
+
+    <h3 id="step6"><span class="step-num">6</span> Create wrangler.toml</h3>
+    <pre><code class="language-toml">name = "my-uploader"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "my-uploads"</code></pre>
+    <p>Replace <code>my-uploads</code> with the bucket name you created in Step 2.</p>
+
+    <h3 id="step7"><span class="step-num">7</span> Create src/index.js</h3>
+    <pre><code class="language-js">import { createTusHandler } from 'tus-server-r2'
+
+export default createTusHandler()</code></pre>
+
+    <h3 id="step8"><span class="step-num">8</span> Test locally</h3>
+    <pre><code class="language-bash">wrangler dev</code></pre>
+    <p>Your TUS endpoint is available at <code>http://localhost:8787</code>. Paste this into the <a href="./example.html">upload example page</a> to test uploads locally.</p>
+
+    <h3 id="step9"><span class="step-num">9</span> Deploy</h3>
+    <pre><code class="language-bash">wrangler deploy</code></pre>
+    <p>Your TUS endpoint is live at <code>https://my-uploader.&lt;your-subdomain&gt;.workers.dev</code>.</p>
+
+    <h3 id="step10"><span class="step-num">10</span> Test the live deployment</h3>
+    <p>Open the <a href="./example.html">upload example page</a>, paste your Worker URL, and upload a file. Check your R2 bucket in the Cloudflare dashboard — the file should appear under <code>uploads/</code>.</p>
+  </section>
+
+  <section id="options">
+    <h2>Options</h2>
+    <p>All options are optional. Env vars are read automatically from the Worker environment.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Option</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>bucket</code></td><td><code>env.BUCKET</code></td><td>R2Bucket instance</td></tr>
+          <tr><td><code>statePrefix</code></td><td><code>__tus</code></td><td>R2 key prefix for upload state objects</td></tr>
+          <tr><td><code>uploadsPrefix</code></td><td><code>uploads</code></td><td>R2 key prefix for completed files</td></tr>
+          <tr><td><code>maxSize</code></td><td>unlimited</td><td>Maximum upload size in bytes</td></tr>
+          <tr><td><code>uploadTTL</code></td><td><code>86400000</code> (24h)</td><td>Incomplete upload TTL in milliseconds</td></tr>
+          <tr><td><code>webhookUrl</code></td><td><code>env.WEBHOOK_URL</code></td><td>URL to POST on upload completion</td></tr>
+          <tr><td><code>webhookBearerToken</code></td><td><code>env.WEBHOOK_BEARER_TOKEN</code></td><td>Bearer token for webhook Authorization header</td></tr>
+          <tr><td><code>corsAllowOrigin</code></td><td><code>*</code></td><td>Allowed CORS origins, comma-separated</td></tr>
+          <tr><td><code>onComplete</code></td><td>—</td><td><code>async (key, metadata, bucket) => void</code></td></tr>
+          <tr><td><code>basePath</code></td><td><code>''</code></td><td>URL prefix when TUS is at a sub-path</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="env-vars">
+    <h2>Environment Variables</h2>
+    <p>Configure via <code>wrangler.toml</code> <code>[vars]</code> — no code changes needed:</p>
+    <pre><code class="language-toml">[vars]
+WEBHOOK_URL = "https://api.example.com/upload-complete"
+WEBHOOK_BEARER_TOKEN = "your-secret-token"
+CORS_ALLOW_ORIGIN = "https://app.example.com,https://admin.example.com"</code></pre>
+    <p><code>CORS_ALLOW_ORIGIN</code> defaults to <code>*</code> if not set. Set it to restrict uploads to specific domains.</p>
+  </section>
+
+  <section id="extensions">
+    <h2>TUS Extensions</h2>
+    <ul class="ext-list">
+      <li><span class="ext-tag">creation</span> POST to create upload before sending data</li>
+      <li><span class="ext-tag">creation-with-upload</span> Send first chunk in the POST body</li>
+      <li><span class="ext-tag">creation-defer-length</span> Omit Upload-Length at creation, provide later</li>
+      <li><span class="ext-tag">termination</span> DELETE to cancel upload and free resources</li>
+      <li><span class="ext-tag">expiration</span> Incomplete uploads expire after <code>uploadTTL</code></li>
+    </ul>
+  </section>
+
+  <section id="storage">
+    <h2>Storage Layout</h2>
+    <pre><code>__tus/{uuid}    — upload state JSON (deleted on completion or termination)
+uploads/{uuid}  — completed file</code></pre>
+    <p>Both prefixes are configurable via <code>statePrefix</code> and <code>uploadsPrefix</code>.</p>
+    <p>TUS <code>Upload-Metadata</code> is decoded and mapped to R2 on completion:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>TUS metadata key</th><th>R2 field</th></tr></thead>
+        <tbody>
+          <tr><td><code>type</code></td><td><code>httpMetadata.contentType</code></td></tr>
+          <tr><td><code>filename</code></td><td><code>httpMetadata.contentDisposition</code></td></tr>
+          <tr><td>other keys</td><td><code>customMetadata[key]</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="webhook">
+    <h2>Webhook</h2>
+    <p>On upload completion, <code>tus-server-r2</code> POSTs to <code>webhookUrl</code>:</p>
+    <pre><code class="language-json">{
+  "key": "uploads/550e8400-e29b-41d4-a716-446655440000",
+  "metadata": {
+    "filename": "video.mp4",
+    "type": "video/mp4"
+  }
+}</code></pre>
+    <p>With <code>Authorization: Bearer &lt;token&gt;</code> if <code>WEBHOOK_BEARER_TOKEN</code> is set.</p>
+  </section>
+
+  <section id="errors">
+    <h2>Error Codes</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Status</th><th>Condition</th></tr></thead>
+        <tbody>
+          <tr><td><code>400</code></td><td>Missing Upload-Length and Upload-Defer-Length</td></tr>
+          <tr><td><code>404</code></td><td>Upload not found</td></tr>
+          <tr><td><code>409</code></td><td>Upload-Offset mismatch</td></tr>
+          <tr><td><code>410</code></td><td>Upload expired</td></tr>
+          <tr><td><code>412</code></td><td>Missing or wrong Tus-Resumable header</td></tr>
+          <tr><td><code>413</code></td><td>Upload exceeds maxSize</td></tr>
+          <tr><td><code>415</code></td><td>Wrong Content-Type on PATCH</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="example-auth">
+    <h2>With Auth</h2>
+    <p>Authorization runs before TUS handling in the Worker fetch handler:</p>
+    <pre><code class="language-js">import { createTusHandler } from 'tus-server-r2'
+
+const tus = createTusHandler()
+
+export default {
+  async fetch(request, env, ctx) {
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '')
+    if (!token || token !== env.API_TOKEN) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+    return tus.fetch(request, env, ctx)
+  }
+}</code></pre>
+  </section>
+
+  <section id="example-webhook">
+    <h2>With Webhook</h2>
+    <p>Configure via <code>wrangler.toml</code> — no code changes needed:</p>
+    <pre><code class="language-toml">[vars]
+WEBHOOK_URL = "https://api.example.com/webhook"
+WEBHOOK_BEARER_TOKEN = "secret"</code></pre>
+    <pre><code class="language-js">import { createTusHandler } from 'tus-server-r2'
+
+export default createTusHandler()</code></pre>
+    <p>Or use <code>onComplete</code> for custom logic:</p>
+    <pre><code class="language-js">export default createTusHandler({
+  onComplete: async (key, metadata, bucket) => {
+    await fetch('https://api.example.com/notify', {
+      method: 'POST',
+      body: JSON.stringify({ key, ...metadata })
+    })
+  }
+})</code></pre>
+  </section>
+
+  <section id="example-cron">
+    <h2>Expired Upload Cleanup</h2>
+    <p>Add a cron trigger to clean up expired incomplete uploads:</p>
+    <pre><code class="language-toml">[triggers]
+crons = ["0 * * * *"]</code></pre>
+    <pre><code class="language-js">import { createTusHandler } from 'tus-server-r2'
+
+const tus = createTusHandler()
+
+export default {
+  fetch: tus.fetch.bind(tus),
+
+  async scheduled(event, env, ctx) {
+    const bucket = env.BUCKET
+    const list = await bucket.list({ prefix: '__tus/' })
+    for (const obj of list.objects) {
+      const state = JSON.parse(await (await bucket.get(obj.key)).text())
+      if (Date.now() > state.expires) {
+        bucket.resumeMultipartUpload(state.key, state.uploadId).abort()
+        await bucket.delete(obj.key)
+      }
+    }
+  }
+}</code></pre>
+  </section>
+
+  <section id="example-uppy">
+    <h2>Uppy Client</h2>
+    <pre><code class="language-js">import Uppy from '@uppy/core'
+import Tus from '@uppy/tus'
+
+const uppy = new Uppy()
+uppy.use(Tus, {
+  endpoint: 'https://my-uploader.&lt;account&gt;.workers.dev',
+  headers: {
+    Authorization: 'Bearer my-token'
+  }
+})</code></pre>
+    <p>Or try it directly in the browser: <a href="./example.html">interactive upload example →</a></p>
+  </section>
+
+  <footer>
+    <a href="https://www.npmjs.com/package/tus-server-r2" target="_blank">npm</a>
+    <a href="https://github.com/aiodintsov/tus-server-r2" target="_blank">GitHub</a>
+    <a href="./example.html">Example</a>
+    <a href="./llms.txt">llms.txt</a>
+    <a href="https://tus.io/protocols/resumable-upload" target="_blank">TUS spec</a>
+    <a href="https://developers.cloudflare.com/r2/" target="_blank">Cloudflare R2</a>
+  </footer>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll()</script>
+<script>
+  // Active nav link on scroll
+  const sections = document.querySelectorAll('[id]')
+  const navLinks = document.querySelectorAll('nav a')
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'))
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`)
+        if (active) active.classList.add('active')
+      }
+    })
+  }, { rootMargin: '-20% 0px -75% 0px' })
+
+  sections.forEach(s => observer.observe(s))
+</script>
+</body>
+</html>
