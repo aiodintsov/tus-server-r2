@@ -8,6 +8,8 @@ TUS resumable upload protocol server for Cloudflare Workers + R2.
 
 Zero dependencies. No KV. No Durable Objects. Just your R2 bucket.
 
+**[Try the live upload example →](./example.html)**
+
 ---
 
 ## Setup Guide
