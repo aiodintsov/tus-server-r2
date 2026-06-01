@@ -1,0 +1,224 @@
+# tus-server-r2
+
+> TUS resumable upload protocol server for Cloudflare Workers + R2. Zero dependencies, no KV, no Durable Objects.
+
+## Install
+
+```bash
+npm install tus-server-r2
+```
+
+## Minimal deployment
+
+Three files required:
+
+**wrangler.toml**
+```toml
+name = "my-uploader"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "my-uploads"
+```
+
+**src/index.js**
+```js
+import { createTusHandler } from 'tus-server-r2'
+
+export default createTusHandler()
+```
+
+Deploy: `npx wrangler deploy`
+
+Endpoint: `https://my-uploader.<account>.workers.dev`
+
+## API
+
+```js
+createTusHandler(options?)
+```
+
+Returns a Cloudflare Worker handler (`{ fetch(request, env, ctx) }`).
+
+### Options
+
+All optional. Env vars are read automatically from the Worker environment.
+
+| Option               | Default                       | Description                                      |
+|----------------------|-------------------------------|--------------------------------------------------|
+| `bucket`             | `env.BUCKET`                  | R2Bucket instance                                |
+| `statePrefix`        | `'__tus'`                     | R2 prefix for in-progress state objects          |
+| `uploadsPrefix`      | `'uploads'`                   | R2 prefix for completed upload objects           |
+| `maxSize`            | unlimited                     | Max bytes, advertised in TUS OPTIONS response    |
+| `uploadTTL`          | `86400000`                    | Incomplete upload expiry in ms (24h)             |
+| `webhookUrl`         | `env.WEBHOOK_URL`             | POST this URL when upload completes              |
+| `webhookBearerToken` | `env.WEBHOOK_BEARER_TOKEN`    | Authorization: Bearer token for webhook          |
+| `onComplete`         | —                             | `async (key, metadata, bucket) => void`          |
+| `basePath`           | `''`                          | URL prefix when mounted at a sub-path            |
+
+## Usage patterns
+
+### Standalone (simplest)
+
+```js
+export default createTusHandler()
+```
+
+### With webhook via env vars
+
+wrangler.toml:
+```toml
+[vars]
+WEBHOOK_URL = "https://api.example.com/webhook"
+WEBHOOK_BEARER_TOKEN = "secret"
+```
+
+```js
+export default createTusHandler()
+```
+
+### With onComplete hook
+
+```js
+export default createTusHandler({
+  onComplete: async (key, metadata, bucket) => {
+    await fetch('https://api.example.com/notify', {
+      method: 'POST',
+      body: JSON.stringify({ key, ...metadata })
+    })
+  }
+})
+```
+
+### With auth (validate before TUS handling)
+
+```js
+import { createTusHandler } from 'tus-server-r2'
+
+const tus = createTusHandler()
+
+export default {
+  async fetch(request, env, ctx) {
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '')
+    if (!token || token !== env.API_TOKEN) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+    return tus.fetch(request, env, ctx)
+  }
+}
+```
+
+### At a sub-path
+
+```js
+const tus = createTusHandler({ basePath: '/files' })
+
+export default {
+  async fetch(request, env, ctx) {
+    if (new URL(request.url).pathname.startsWith('/files')) {
+      return tus.fetch(request, env, ctx)
+    }
+    return new Response('Not found', { status: 404 })
+  }
+}
+```
+
+### Custom prefixes
+
+```js
+export default createTusHandler({
+  statePrefix: 'tus',
+  uploadsPrefix: 'media',
+})
+```
+
+### Expired upload cleanup (cron trigger)
+
+wrangler.toml:
+```toml
+[triggers]
+crons = ["0 * * * *"]
+```
+
+```js
+import { createTusHandler } from 'tus-server-r2'
+const tus = createTusHandler()
+
+export default {
+  fetch: tus.fetch.bind(tus),
+  async scheduled(event, env, ctx) {
+    const bucket = env.BUCKET
+    const list = await bucket.list({ prefix: '__tus/' })
+    for (const obj of list.objects) {
+      const state = JSON.parse(await (await bucket.get(obj.key)).text())
+      if (Date.now() > state.expires) {
+        bucket.resumeMultipartUpload(state.key, state.uploadId).abort()
+        await bucket.delete(obj.key)
+      }
+    }
+  }
+}
+```
+
+## Storage layout
+
+```
+__tus/{uuid}    — upload state JSON (deleted on complete/terminate/expire)
+uploads/{uuid}  — final uploaded file
+```
+
+## TUS metadata mapping
+
+TUS Upload-Metadata values (base64-encoded) are decoded and mapped to R2 on completion:
+
+- `type` → R2 httpMetadata.contentType
+- `filename` → R2 httpMetadata.contentDisposition (attachment; filename="...")
+- other keys → R2 customMetadata
+
+## Supported TUS extensions
+
+- creation
+- creation-with-upload
+- creation-defer-length
+- termination
+- expiration
+
+## TUS protocol methods
+
+- OPTIONS → server capabilities (Tus-Extension, Tus-Max-Size)
+- POST / → create upload, returns Location: /{uuid}
+- HEAD /{uuid} → query offset
+- PATCH /{uuid} → upload chunk
+- DELETE /{uuid} → terminate upload
+
+## Error codes
+
+- 400 Missing Upload-Length and Upload-Defer-Length
+- 404 Upload not found
+- 409 Upload-Offset mismatch
+- 410 Upload expired
+- 412 Missing or wrong Tus-Resumable header
+- 413 Upload exceeds maxSize
+- 415 Wrong Content-Type on PATCH
+
+## Webhook payload
+
+POST to webhookUrl on completion:
+
+```json
+{
+  "key": "uploads/{uuid}",
+  "metadata": { "filename": "...", "type": "..." }
+}
+```
+
+Headers: Content-Type: application/json, Authorization: Bearer {token} (if configured)
+
+## Links
+
+- npm: https://www.npmjs.com/package/tus-server-r2
+- GitHub: https://github.com/aiodintsov/tus-server-r2
+- TUS spec: https://tus.io/protocols/resumable-upload
+- Cloudflare R2 Workers API: https://developers.cloudflare.com/r2/api/workers/workers-api-reference/

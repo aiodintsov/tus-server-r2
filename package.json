@@ -1,0 +1,41 @@
+{
+  "name": "tus-server-r2",
+  "version": "1.0.0-alpha.1",
+  "description": "TUS resumable upload protocol server for Cloudflare Workers + R2",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "tus",
+    "resumable",
+    "upload",
+    "cloudflare",
+    "workers",
+    "r2"
+  ],
+  "author": "Aleksey Odintsov",
+  "license": "MIT",
+  "homepage": "https://aiodintsov.github.io/tus-server-r2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aiodintsov/tus-server-r2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aiodintsov/tus-server-r2/issues"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
