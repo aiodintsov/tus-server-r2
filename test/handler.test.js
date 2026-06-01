@@ -41,6 +41,53 @@ describe('OPTIONS', () => {
   })
 })
 
+// --- CORS ---
+describe('CORS', () => {
+  it('returns * by default', async () => {
+    const { tus } = makeHandler()
+    const res = await tus.fetch(req('OPTIONS', '/'), {}, makeCtx())
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
+  })
+
+  it('reflects matching origin from corsAllowOrigin list', async () => {
+    const { tus } = makeHandler({ corsAllowOrigin: 'https://app.example.com,https://admin.example.com' })
+    const r = new Request(`${BASE}/`, {
+      method: 'OPTIONS',
+      headers: { 'Tus-Resumable': TUS_VERSION, Origin: 'https://app.example.com' },
+    })
+    const res = await tus.fetch(r, {}, makeCtx())
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://app.example.com')
+  })
+
+  it('returns first origin when request origin not in list', async () => {
+    const { tus } = makeHandler({ corsAllowOrigin: 'https://app.example.com' })
+    const r = new Request(`${BASE}/`, {
+      method: 'OPTIONS',
+      headers: { 'Tus-Resumable': TUS_VERSION, Origin: 'https://evil.com' },
+    })
+    const res = await tus.fetch(r, {}, makeCtx())
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://app.example.com')
+  })
+
+  it('uses env.CORS_ALLOW_ORIGIN as fallback', async () => {
+    const bucket = createMockBucket()
+    const tus = createTusHandler()
+    const r = new Request(`${BASE}/`, {
+      method: 'OPTIONS',
+      headers: { 'Tus-Resumable': TUS_VERSION, Origin: 'https://myapp.com' },
+    })
+    const res = await tus.fetch(r, { BUCKET: bucket, CORS_ALLOW_ORIGIN: 'https://myapp.com' }, makeCtx())
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://myapp.com')
+  })
+
+  it('includes CORS headers on all responses', async () => {
+    const { tus } = makeHandler()
+    const res = await tus.fetch(req('POST', '/', { 'Upload-Length': '100' }), {}, makeCtx())
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
+    expect(res.headers.get('Access-Control-Expose-Headers')).toContain('Upload-Offset')
+  })
+})
+
 // --- POST (create) ---
 describe('POST', () => {
   it('returns 412 without Tus-Resumable', async () => {

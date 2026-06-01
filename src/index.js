@@ -10,6 +10,7 @@ export function createTusHandler(options = {}) {
         bucket: options.bucket ?? env?.BUCKET,
         webhookUrl: options.webhookUrl ?? env?.WEBHOOK_URL,
         webhookBearerToken: options.webhookBearerToken ?? env?.WEBHOOK_BEARER_TOKEN,
+        corsAllowOrigin: options.corsAllowOrigin ?? env?.CORS_ALLOW_ORIGIN,
       }
       return createHandler(config)(request, ctx)
     },

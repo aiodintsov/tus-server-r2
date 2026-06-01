@@ -49,8 +49,10 @@ This opens a browser window to authorize Wrangler with your Cloudflare account.
 mkdir my-uploader
 cd my-uploader
 npm init -y
-npm install tus-server-r2
+npm install aiodintsov/tus-server-r2
 ```
+
+> Once published to npm, this will be `npm install tus-server-r2`.
 
 ### Step 6 — Create `wrangler.toml`
 
@@ -111,6 +113,7 @@ All options are optional:
 | `webhookBearerToken` | `env.WEBHOOK_BEARER_TOKEN`    | Bearer token for webhook Authorization header     |
 | `onComplete`         | —                             | `async (key, metadata, bucket) => void`           |
 | `basePath`           | `''`                          | URL prefix when TUS is at a sub-path              |
+| `corsAllowOrigin`    | `*`                           | Allowed CORS origins, comma-separated             |
 
 ## Environment Variables
 
@@ -120,7 +123,10 @@ Configure via `wrangler.toml` `[vars]` — no code changes needed:
 [vars]
 WEBHOOK_URL = "https://api.example.com/upload-complete"
 WEBHOOK_BEARER_TOKEN = "your-secret-token"
+CORS_ALLOW_ORIGIN = "https://app.example.com,https://admin.example.com"
 ```
+
+`CORS_ALLOW_ORIGIN` defaults to `*` if not set — allows all origins. Set it to restrict uploads to specific domains.
 
 ## Supported TUS Extensions
 

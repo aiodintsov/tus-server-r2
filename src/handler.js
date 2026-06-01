@@ -6,6 +6,26 @@ const DEFAULT_STATE_PREFIX = '__tus'
 const DEFAULT_UPLOADS_PREFIX = 'uploads'
 const DEFAULT_UPLOAD_TTL = 86400000 // 24h
 
+const CORS_ALLOW_METHODS = 'GET, POST, HEAD, PATCH, DELETE, OPTIONS'
+const CORS_ALLOW_HEADERS = 'Tus-Resumable, Upload-Length, Upload-Offset, Upload-Metadata, Upload-Defer-Length, Upload-Concat, Content-Type, Content-Length, Authorization'
+const CORS_EXPOSE_HEADERS = 'Tus-Resumable, Upload-Offset, Upload-Length, Location, Upload-Expires, Tus-Version, Tus-Extension, Tus-Max-Size'
+
+function resolveOrigin(requestOrigin, allowOrigin) {
+  if (!allowOrigin || allowOrigin === '*') return '*'
+  const allowed = allowOrigin.split(',').map(o => o.trim())
+  return allowed.includes(requestOrigin) ? requestOrigin : allowed[0]
+}
+
+function withCors(response, requestOrigin, allowOrigin) {
+  const res = new Response(response.body, response)
+  res.headers.set('Access-Control-Allow-Origin', resolveOrigin(requestOrigin, allowOrigin))
+  res.headers.set('Access-Control-Allow-Methods', CORS_ALLOW_METHODS)
+  res.headers.set('Access-Control-Allow-Headers', CORS_ALLOW_HEADERS)
+  res.headers.set('Access-Control-Expose-Headers', CORS_EXPOSE_HEADERS)
+  res.headers.set('Access-Control-Max-Age', '86400')
+  return res
+}
+
 export function createHandler(config) {
   const {
     bucket,
@@ -15,12 +35,15 @@ export function createHandler(config) {
     uploadTTL = DEFAULT_UPLOAD_TTL,
     webhookUrl,
     webhookBearerToken,
+    corsAllowOrigin,
     onComplete,
   } = config
 
   return async function handle(request, ctx) {
     const url = new URL(request.url)
     const method = request.method
+    const requestOrigin = request.headers.get('Origin') || ''
+    const cors = (res) => withCors(res, requestOrigin, corsAllowOrigin)
 
     // Strip basePath prefix if configured
     const basePath = (config.basePath || '').replace(/\/$/, '')
@@ -31,23 +54,23 @@ export function createHandler(config) {
     const uuid = segments[0] || null
 
     if (method === 'OPTIONS') {
-      return optionsResponse(maxSize)
+      return cors(optionsResponse(maxSize))
     }
 
     const versionError = validateTusVersion(request)
-    if (versionError) return versionError
+    if (versionError) return cors(versionError)
 
     if (method === 'POST' && !uuid) {
-      return handleCreate(request, ctx, { bucket, statePrefix, uploadsPrefix, maxSize, uploadTTL, webhookUrl, webhookBearerToken, onComplete }, url, basePath)
+      return cors(await handleCreate(request, ctx, { bucket, statePrefix, uploadsPrefix, maxSize, uploadTTL, webhookUrl, webhookBearerToken, onComplete }, url, basePath))
     }
 
-    if (!uuid) return tusError(404, 'Not found')
+    if (!uuid) return cors(tusError(404, 'Not found'))
 
-    if (method === 'HEAD') return handleHead(uuid, { bucket, statePrefix })
-    if (method === 'PATCH') return handlePatch(request, uuid, ctx, { bucket, statePrefix, uploadTTL, webhookUrl, webhookBearerToken, onComplete })
-    if (method === 'DELETE') return handleDelete(uuid, { bucket, statePrefix })
+    if (method === 'HEAD') return cors(await handleHead(uuid, { bucket, statePrefix }))
+    if (method === 'PATCH') return cors(await handlePatch(request, uuid, ctx, { bucket, statePrefix, uploadTTL, webhookUrl, webhookBearerToken, onComplete }))
+    if (method === 'DELETE') return cors(await handleDelete(uuid, { bucket, statePrefix }))
 
-    return new Response('Method Not Allowed', { status: 405 })
+    return cors(new Response('Method Not Allowed', { status: 405 }))
   }
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "tus-server-r2",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "TUS resumable upload protocol server for Cloudflare Workers + R2",
   "type": "module",
   "main": "src/index.js",
