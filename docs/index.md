@@ -30,6 +30,11 @@ Name it something like `my-uploads`.
 npm install -g wrangler
 ```
 
+> On some systems (including devcontainers) you may need `sudo`:
+> ```bash
+> sudo npm install -g wrangler
+> ```
+
 ### Step 4 — Login to Cloudflare
 
 ```bash
