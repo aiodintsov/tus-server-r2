@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>tus-server-r2 — Upload Example</title>
-  <link href="https://releases.transloadit.com/uppy/v4.4.0/uppy.min.css" rel="stylesheet">
+  <link href="https://releases.transloadit.com/uppy/v5.2.4/uppy.min.css" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -160,9 +160,8 @@
     </div>
   </div>
 
-  <script src="https://releases.transloadit.com/uppy/v4.4.0/uppy.min.js"></script>
-  <script>
-    const { Uppy, Dashboard, Tus } = globalThis.Uppy
+  <script type="module">
+    import { Uppy, Dashboard, Tus } from 'https://releases.transloadit.com/uppy/v5.2.4/uppy.min.mjs'
 
     const STORAGE_KEY = 'tus-server-r2-endpoint'
 
